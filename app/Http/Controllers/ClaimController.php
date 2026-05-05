@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\ApprovalRequest;
 use App\Models\Claim;
 use App\Models\ClaimDocument;
 use App\Models\Policy;
 use App\Models\Transaction;
 use App\Services\AccountingService;
+use App\Services\ApprovalWorkflowService;
 use App\Services\AuditService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -17,6 +17,7 @@ class ClaimController extends Controller
 {
     public function __construct(
         private readonly AccountingService $accounting,
+        private readonly ApprovalWorkflowService $approvalWorkflow,
         private readonly AuditService $audit,
     ) {
     }
@@ -77,14 +78,15 @@ class ClaimController extends Controller
         ]);
 
         if ($claim->is_large_claim) {
-            ApprovalRequest::create([
-                'module' => 'claims',
-                'record_id' => $claim->id,
-                'request_type' => 'large_claim_escalation',
-                'required_role' => 'BRANCH_MANAGER',
-                'requested_by' => auth()->id(),
-                'reason' => 'Claim exceeds 10,000 SAR',
-            ]);
+            $this->approvalWorkflow->createRequest(
+                module: 'claims',
+                recordId: $claim->id,
+                requestType: 'large_claim_escalation',
+                requestedBy: (int) auth()->id(),
+                reason: 'Claim exceeds 10,000 SAR',
+                amount: (float) $claim->claimed_amount,
+                context: ['claim_no' => $claim->claim_no]
+            );
         }
 
         foreach ($request->file('documents', []) as $doc) {
@@ -163,14 +165,15 @@ class ClaimController extends Controller
         ]);
 
         if ((float) ($validated['approved_amount'] ?? 0) > 5000) {
-            ApprovalRequest::create([
-                'module' => 'claims',
-                'record_id' => $claim->id,
-                'request_type' => 'senior_claim_approval',
-                'required_role' => 'BRANCH_MANAGER',
-                'requested_by' => auth()->id(),
-                'reason' => 'Approved amount exceeds 5,000 SAR',
-            ]);
+            $this->approvalWorkflow->createRequest(
+                module: 'claims',
+                recordId: $claim->id,
+                requestType: 'senior_claim_approval',
+                requestedBy: (int) auth()->id(),
+                reason: 'Approved amount exceeds 5,000 SAR',
+                amount: (float) $validated['approved_amount'],
+                context: ['claim_no' => $claim->claim_no]
+            );
         }
 
         if ($validated['status'] === 'paid' && ! empty($validated['paid_amount'])) {

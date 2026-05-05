@@ -1,8 +1,10 @@
 <?php
 
 use App\Http\Controllers\ClaimController;
+use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\CRMController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DelegationController;
 use App\Http\Controllers\FinanceController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\PolicyController;
@@ -57,6 +59,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/reports/export/pdf', [ReportController::class, 'exportPdf'])->name('reports.pdf');
     });
     Route::view('/settings', 'placeholders.settings')->name('settings.index');
+
+    Route::middleware('role:SUPER_ADMIN,BRANCH_MANAGER,UNDERWRITER,CLAIMS_OFFICER,ACCOUNTANT')->group(function () {
+        Route::get('/approvals', [ApprovalController::class, 'index'])->name('approvals.index');
+        Route::post('/approvals/{approvalRequest}/approve', [ApprovalController::class, 'approve'])->whereNumber('approvalRequest')->name('approvals.approve');
+        Route::post('/approvals/{approvalRequest}/reject', [ApprovalController::class, 'reject'])->whereNumber('approvalRequest')->name('approvals.reject');
+    });
+
+    Route::middleware('role:SUPER_ADMIN,BRANCH_MANAGER')->group(function () {
+        Route::get('/delegations', [DelegationController::class, 'index'])->name('delegations.index');
+        Route::post('/delegations', [DelegationController::class, 'store'])->name('delegations.store');
+        Route::delete('/delegations/{userDelegation}', [DelegationController::class, 'destroy'])->whereNumber('userDelegation')->name('delegations.destroy');
+    });
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');

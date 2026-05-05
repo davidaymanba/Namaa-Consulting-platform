@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\ApprovalRequest;
 use App\Models\Broker;
 use App\Models\Client;
 use App\Models\Policy;
 use App\Models\PolicyInstallment;
 use App\Models\Transaction;
 use App\Services\AccountingService;
+use App\Services\ApprovalWorkflowService;
 use App\Services\AuditService;
 use App\Services\PremiumCalculatorService;
 use App\Services\ReinsuranceService;
@@ -26,6 +26,7 @@ class PolicyController extends Controller
         private readonly PremiumCalculatorService $premiumCalculator,
         private readonly AccountingService $accounting,
         private readonly ReinsuranceService $reinsurance,
+        private readonly ApprovalWorkflowService $approvalWorkflow,
         private readonly AuditService $audit,
     ) {
     }
@@ -85,14 +86,15 @@ class PolicyController extends Controller
         $premium = $this->premiumCalculator->forCar($validated);
 
         if ($premium['discount_pct'] > 15) {
-            ApprovalRequest::create([
-                'module' => 'policies',
-                'record_id' => 0,
-                'request_type' => 'premium_discount',
-                'required_role' => 'BRANCH_MANAGER',
-                'requested_by' => auth()->id(),
-                'reason' => 'Discount above 15%',
-            ]);
+            $this->approvalWorkflow->createRequest(
+                module: 'policies',
+                recordId: 0,
+                requestType: 'premium_discount',
+                requestedBy: (int) auth()->id(),
+                reason: 'Discount above 15%',
+                amount: (float) $premium['net_premium'],
+                context: ['discount_pct' => $premium['discount_pct']]
+            );
         }
 
         $policy = DB::transaction(function () use ($validated, $premium) {
@@ -213,14 +215,15 @@ class PolicyController extends Controller
 
     public function destroy(Policy $policy): RedirectResponse
     {
-        ApprovalRequest::create([
-            'module' => 'policies',
-            'record_id' => $policy->id,
-            'request_type' => 'cancellation',
-            'required_role' => 'BRANCH_MANAGER',
-            'requested_by' => auth()->id(),
-            'reason' => 'Policy cancellation request',
-        ]);
+        $this->approvalWorkflow->createRequest(
+            module: 'policies',
+            recordId: $policy->id,
+            requestType: 'cancellation',
+            requestedBy: (int) auth()->id(),
+            reason: 'Policy cancellation request',
+            amount: (float) $policy->net_premium,
+            context: ['policy_no' => $policy->policy_no]
+        );
 
         $old = $policy->toArray();
         $policy->update(['status' => 'cancelled']);
