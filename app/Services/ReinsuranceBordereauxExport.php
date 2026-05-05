@@ -15,22 +15,22 @@ class ReinsuranceBordereauxExport implements FromCollection, WithHeadings
 
     public function collection()
     {
-        $query = ReinsuranceDistribution::query()->with(['policy.client', 'treaty']);
+        $query = ReinsuranceDistribution::query()
+            ->with(['policy.client', 'treaty']);
 
         if ($this->startDate && $this->endDate) {
             $query->whereHas('policy', fn ($policyQuery) => $policyQuery->whereBetween('issued_at', [Carbon::parse($this->startDate)->startOfDay(), Carbon::parse($this->endDate)->endOfDay()]));
         }
 
-        return $query->get()
-            ->map(fn ($row) => [
-                'policy_no' => $row->policy?->policy_no,
-                'insured' => $row->policy?->client?->name,
-                'type' => $row->policy?->type,
-                'premium' => $row->policy_premium,
-                'ri_share' => $row->ri_share_amount,
-                'claims_recovered' => $row->claims_recovered,
-                'reinsurer' => $row->treaty?->reinsurer,
-            ]);
+        return $query->get()->map(fn ($row) => [
+            'policy_no' => $row->policy?->policy_no,
+            'insured' => $row->policy?->client?->name,
+            'type' => $row->policy?->type,
+            'premium' => $row->policy_premium,
+            'ri_share' => $row->ri_share_amount,
+            'claims_recovered' => $row->claims_recovered,
+            'reinsurer' => $row->treaty?->reinsurer,
+        ]);
     }
 
     public function headings(): array

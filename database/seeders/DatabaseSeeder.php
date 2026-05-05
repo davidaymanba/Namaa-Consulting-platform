@@ -11,6 +11,9 @@ class DatabaseSeeder extends Seeder
         $this->call([
             ApprovalFlowRuleSeeder::class,
             RenewalRuleSeeder::class,
+            ClaimAutomationRuleSeeder::class,
+            PaymentReminderRuleSeeder::class,
+            ReinsuranceRuleSeeder::class,
             CoreInsuranceSeeder::class,
         ]);
     }

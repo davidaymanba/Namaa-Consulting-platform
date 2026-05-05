@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ClaimController;
 use App\Http\Controllers\ApprovalController;
+use App\Http\Controllers\CollectionController;
 use App\Http\Controllers\CRMController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DelegationController;
@@ -12,6 +13,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RenewalController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReinsuranceController;
+use App\Models\ReinsuranceAlert;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/dashboard');
@@ -41,6 +43,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware('role:SUPER_ADMIN,BRANCH_MANAGER,CLAIMS_OFFICER')->group(function () {
         Route::get('/claims/create', [ClaimController::class, 'create'])->name('claims.create');
         Route::post('/claims', [ClaimController::class, 'store'])->name('claims.store');
+        Route::get('/claims/wizard/{policy}', [ClaimController::class, 'wizardStart'])->whereNumber('policy')->name('claims.wizard.start');
+        Route::post('/claims/{claim}/wizard-step', [ClaimController::class, 'wizardStep'])->whereNumber('claim')->name('claims.wizard.step');
+        Route::get('/claims/{claim}/coverage-check', [ClaimController::class, 'coverageCheck'])->whereNumber('claim')->name('claims.coverage-check');
+        Route::get('/claims/{claim}/fraud-flags', [ClaimController::class, 'fraudFlags'])->whereNumber('claim')->name('claims.fraud-flags');
         Route::get('/claims/{claim}/edit', [ClaimController::class, 'edit'])->whereNumber('claim')->name('claims.edit');
         Route::put('/claims/{claim}', [ClaimController::class, 'update'])->whereNumber('claim')->name('claims.update');
         Route::delete('/claims/{claim}', [ClaimController::class, 'destroy'])->whereNumber('claim')->name('claims.destroy');
@@ -52,7 +58,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware('role:SUPER_ADMIN,BRANCH_MANAGER,ACCOUNTANT')->group(function () {
         Route::get('/reinsurance', [ReinsuranceController::class, 'index'])->name('reinsurance.index');
         Route::get('/reinsurance/export/monthly', [ReinsuranceController::class, 'exportMonthly'])->name('reinsurance.export');
+        Route::get('/reinsurance/alerts', [ReinsuranceController::class, 'alerts'])->name('reinsurance.alerts');
+        Route::post('/reinsurance/bordereaux/generate', [ReinsuranceController::class, 'generateBordereaux'])->name('reinsurance.bordereaux.generate');
+        Route::post('/reinsurance/alerts/{alert}/resolve', [ReinsuranceController::class, 'resolveAlert'])->whereNumber('alert')->name('reinsurance.alerts.resolve');
         Route::get('/finance', [FinanceController::class, 'index'])->name('finance.index');
+        Route::get('/collections/aging', [CollectionController::class, 'aging'])->name('collections.aging');
+        Route::post('/collections/reminders/schedule', [CollectionController::class, 'scheduleReminders'])->name('collections.reminders.schedule');
     });
     Route::middleware('role:SUPER_ADMIN,BRANCH_MANAGER,UNDERWRITER,ACCOUNTANT,CLAIMS_OFFICER')->group(function () {
         Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');

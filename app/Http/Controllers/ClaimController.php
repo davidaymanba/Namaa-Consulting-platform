@@ -6,6 +6,7 @@ use App\Models\Claim;
 use App\Models\ClaimDocument;
 use App\Models\Policy;
 use App\Models\Transaction;
+use App\Services\ClaimAutomationService;
 use App\Services\AccountingService;
 use App\Services\ApprovalWorkflowService;
 use App\Services\AuditService;
@@ -18,6 +19,7 @@ class ClaimController extends Controller
     public function __construct(
         private readonly AccountingService $accounting,
         private readonly ApprovalWorkflowService $approvalWorkflow,
+        private readonly ClaimAutomationService $claimAutomation,
         private readonly AuditService $audit,
     ) {
     }
@@ -50,6 +52,41 @@ class ClaimController extends Controller
         ]);
     }
 
+    public function wizardStart(Policy $policy): \Illuminate\Http\JsonResponse
+    {
+        if ($policy->status !== 'active') {
+            return response()->json(['message' => 'Policy is not active.'], 422);
+        }
+
+        return response()->json($this->claimAutomation->startWizard($policy));
+    }
+
+    public function wizardStep(Request $request, Claim $claim): \Illuminate\Http\JsonResponse
+    {
+        $validated = $request->validate([
+            'step' => ['required', 'string', 'in:incident_details,claim_details,documents,review'],
+            'data' => ['required', 'array'],
+        ]);
+
+        $updated = $this->claimAutomation->saveStep($claim, $validated['step'], $validated['data']);
+
+        return response()->json([
+            'message' => 'Wizard step saved.',
+            'next_step' => $this->claimAutomation->nextStep($updated),
+            'data' => $updated,
+        ]);
+    }
+
+    public function coverageCheck(Claim $claim): \Illuminate\Http\JsonResponse
+    {
+        return response()->json($this->claimAutomation->coverageCheck($claim));
+    }
+
+    public function fraudFlags(Claim $claim): \Illuminate\Http\JsonResponse
+    {
+        return response()->json($this->claimAutomation->fraudFlags($claim));
+    }
+
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
@@ -75,6 +112,9 @@ class ClaimController extends Controller
             'escalated_at' => (float) $validated['claimed_amount'] > 10000 ? now() : null,
             'last_status_update_at' => now(),
             'workflow_notes' => [['status' => 'registered', 'at' => now()->toDateTimeString(), 'by' => auth()->id()]],
+            'wizard_state' => [
+                'steps_completed' => ['incident_details', 'claim_details', 'documents', 'review'],
+            ],
         ]);
 
         if ($claim->is_large_claim) {
@@ -88,6 +128,9 @@ class ClaimController extends Controller
                 context: ['claim_no' => $claim->claim_no]
             );
         }
+
+        $this->claimAutomation->coverageCheck($claim);
+        $this->claimAutomation->fraudFlags($claim);
 
         foreach ($request->file('documents', []) as $doc) {
             $path = $doc->store('claims', 'public');

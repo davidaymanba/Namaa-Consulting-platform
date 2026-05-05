@@ -27,6 +27,11 @@ class Claim extends Model
         'escalated_at',
         'last_status_update_at',
         'workflow_notes',
+        'wizard_state',
+        'coverage_status',
+        'coverage_checked_at',
+        'fraud_score',
+        'fraud_flags',
     ];
 
     protected function casts(): array
@@ -42,6 +47,10 @@ class Claim extends Model
             'escalated_at' => 'datetime',
             'last_status_update_at' => 'datetime',
             'workflow_notes' => 'array',
+            'wizard_state' => 'array',
+            'coverage_checked_at' => 'datetime',
+            'fraud_score' => 'integer',
+            'fraud_flags' => 'array',
         ];
     }
 
