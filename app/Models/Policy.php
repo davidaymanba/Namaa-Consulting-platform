@@ -28,6 +28,9 @@ class Policy extends Model
         'issued_at',
         'data',
         'archived_at',
+        'renewed_from_policy_id',
+        'renewal_notified_at',
+        'renewal_quoted_at',
     ];
 
     protected function casts(): array
@@ -38,6 +41,8 @@ class Policy extends Model
             'end_date' => 'date',
             'issued_at' => 'datetime',
             'archived_at' => 'datetime',
+            'renewal_notified_at' => 'datetime',
+            'renewal_quoted_at' => 'datetime',
             'premium' => 'decimal:2',
             'net_premium' => 'decimal:2',
             'discount_pct' => 'decimal:2',
@@ -73,5 +78,10 @@ class Policy extends Model
     public function reinsuranceDistributions(): HasMany
     {
         return $this->hasMany(ReinsuranceDistribution::class);
+    }
+
+    public function renewedFrom(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'renewed_from_policy_id');
     }
 }

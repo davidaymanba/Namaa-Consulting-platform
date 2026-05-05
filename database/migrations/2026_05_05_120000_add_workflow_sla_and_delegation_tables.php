@@ -20,7 +20,7 @@ return new class extends Migration
             $table->boolean('is_active')->default(true);
             $table->timestamps();
 
-            $table->index(['mod ule', 'request_type', 'is_active']);
+            $table->index(['module', 'request_type', 'is_active']);
         });
 
         Schema::table('approval_requests', function (Blueprint $table) {

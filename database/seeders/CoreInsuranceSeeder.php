@@ -34,6 +34,10 @@ class CoreInsuranceSeeder extends Seeder
         ];
 
         foreach ($approvalRules as $rule) {
+        if (Policy::query()->exists()) {
+            return;
+        }
+
             ApprovalFlowRule::updateOrCreate(
                 [
                     'module' => $rule['module'],

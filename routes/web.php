@@ -9,6 +9,7 @@ use App\Http\Controllers\FinanceController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\PolicyController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\RenewalController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReinsuranceController;
 use Illuminate\Support\Facades\Route;
@@ -64,6 +65,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/approvals', [ApprovalController::class, 'index'])->name('approvals.index');
         Route::post('/approvals/{approvalRequest}/approve', [ApprovalController::class, 'approve'])->whereNumber('approvalRequest')->name('approvals.approve');
         Route::post('/approvals/{approvalRequest}/reject', [ApprovalController::class, 'reject'])->whereNumber('approvalRequest')->name('approvals.reject');
+    });
+
+    Route::middleware('role:SUPER_ADMIN,BRANCH_MANAGER,UNDERWRITER,BROKER,CLIENT')->group(function () {
+        Route::get('/renewals', [RenewalController::class, 'index'])->name('renewals.index');
+        Route::get('/policies/{policy}/renewal-suggest', [RenewalController::class, 'suggest'])->whereNumber('policy')->name('policies.renewal-suggest');
+        Route::post('/renewals/bulk', [RenewalController::class, 'bulkRenew'])->name('renewals.bulk');
+        Route::post('/policies/{policy}/renew', [RenewalController::class, 'renew'])->whereNumber('policy')->name('policies.renew');
     });
 
     Route::middleware('role:SUPER_ADMIN,BRANCH_MANAGER')->group(function () {
